@@ -1,0 +1,19 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# /edit serves the same page; the page switches into editor mode by URL.
+[[redirects]]
+  from = "/edit"
+  to = "/index.html"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/edit"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"

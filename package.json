@@ -1,0 +1,10 @@
+{
+  "name": "baton-best-practices",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Baton Best Practices page with a password-protected in-page editor",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.4"
+  }
+}
