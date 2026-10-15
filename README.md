@@ -41,6 +41,15 @@ netlify deploy --prod
 
 The layout stays responsive because you change content and order, not pixel positions.
 
+## Images and text styling
+
+- **Logo:** in `/edit`, the "Upload logo" bar sits just under the header logo. Upload the **white (light) version** of the Baton logo, because the header and footer are dark. PNG with a transparent background or SVG works best. Use the Size slider to adjust, or "Use default" to go back to the drawn placeholder.
+- **Account manager photos:** each team member has an "Add photo" button (or click the circle). Use the Position slider to move the photo up or down inside the circle. Remove photo returns to the letter circle.
+- **Hero background image:** "Add background image" at the bottom of the header. Use the Darkness slider to keep the headline readable.
+- **Image sections:** "Add a section → Image" adds a full image block with optional heading and caption. Set the width (Narrow / Wide / Full width) and background in the section toolbar. Fill in the image description for accessibility.
+- **Text style:** click any text and the **Text style** bar appears above the Save bar. Pick a color, set opacity (100% to 40%), toggle bold, or press **Reset style**. Styles stay with their text when you move or duplicate items and sections. Leave color on Automatic when you want the text to adapt to light and dark mode.
+- Uploaded images are resized in the browser before upload (PNG, JPG, WebP, GIF, SVG; about 4 MB limit) and stored in Netlify Blobs.
+
 ## Changing the password
 Change `EDIT_PASSWORD` in Netlify's environment variables and trigger a new deploy.
 

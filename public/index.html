@@ -218,7 +218,7 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --err: #ff8a80; } }
   :root[data-theme="dark"] { --err: #ff8a80; }
 
-  body.is-edit { padding-bottom: 7rem; }
+  body.is-edit { padding-bottom: 11rem; }
   .is-edit .swoosh, .is-edit .arrowhead { animation: none; }
   .ed { border-radius: 3px; cursor: text; outline: 1px dashed transparent; outline-offset: 3px; transition: outline-color .15s ease; }
   .ed:hover { outline-color: rgba(1,172,228,.8); }
@@ -298,8 +298,50 @@
     .eb-status { flex: 1 1 100%; }
     .eb-spacer { display: none; }
     .eb-btn { padding: .5rem .7rem; font-size: .85rem; }
-    body.is-edit { padding-bottom: 10rem; }
+    body.is-edit { padding-bottom: 16rem; }
   }
+
+  /* ---------- Fix: highlighted statement in the navy band must be full-strength white ---------- */
+  .band .stack .big { color: #fff; }
+
+  /* ---------- Logo, hero background, photos, image section ---------- */
+  .brand { position: relative; }
+  .logo-img { display: block; width: auto; max-width: min(62vw, 380px); object-fit: contain; }
+  .logotools { top: 100%; left: 0; right: auto; margin-top: .4rem; z-index: 8; justify-content: flex-start; width: max-content; max-width: calc(100vw - 2rem); }
+  .herotools { top: auto; bottom: 1rem; right: auto; left: max(1rem, calc((100vw - 1160px) / 2)); z-index: 8; max-width: calc(100vw - 2rem); }
+  .rng { display: inline-flex; align-items: center; gap: .4rem; color: #cfe8f5; font-size: .8rem; font-weight: 600; }
+  .rng input { width: 90px; }
+  .avatar { overflow: hidden; position: relative; width: 64px; height: 64px; }
+  .avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .avatar-btn { position: absolute; inset: auto 0 0 0; border: 0; padding: .2rem 0; background: rgba(0,19,31,.75); color: #fff; font: inherit; font-size: .65rem; font-weight: 600; cursor: pointer; }
+  .fig { margin: 1.75rem 0 0; display: grid; gap: .9rem; }
+  .fig.narrow { max-width: 640px; }
+  .fig.wide { max-width: 960px; }
+  .fig.full { max-width: none; }
+  .imgbox { position: relative; }
+  .fig img { display: block; width: 100%; height: auto; border-radius: 10px; }
+  .fig figcaption { color: var(--text-soft); font-size: .98rem; }
+  .img-empty { display: grid; place-items: center; min-height: 220px; padding: 1rem; text-align: center; border: 2px dashed var(--rule); border-radius: 10px; color: var(--text-soft); }
+  .imgtools { top: .6rem; right: .6rem; }
+  .altline { font-size: .88rem; color: var(--text-soft); }
+
+  /* ---------- Text style bar ---------- */
+  .stylebar { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: .6rem .9rem; padding-bottom: .65rem; margin-bottom: .1rem; border-bottom: 1px solid rgba(255,255,255,.18); }
+  .stylebar[hidden] { display: none; }
+  .sb-label { font-weight: 600; color: #8fd8f2; font-size: .9rem; }
+  .sb-swatches { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .sw { width: 26px; height: 26px; padding: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.6); cursor: pointer; }
+  .sw.auto { background: repeating-linear-gradient(45deg, #fff 0 4px, #8aa 4px 8px); }
+  .sw[aria-pressed="true"] { outline: 3px solid #fff; outline-offset: 2px; }
+  .stylebar label { display: inline-flex; align-items: center; gap: .4rem; font-size: .85rem; font-weight: 600; color: #cfe8f5; }
+  .stylebar select { font: inherit; font-size: .85rem; padding: .35rem .5rem; border-radius: 5px; border: 1px solid rgba(255,255,255,.35); background: #00263f; color: #fff; }
+  .stylebar input[type="color"] { width: 36px; height: 28px; padding: 0; border: 0; background: none; cursor: pointer; }
+  #sbbold[aria-pressed="true"] { background: var(--sky); border-color: var(--sky); color: #00131f; }
+
+  /* Team toolbar sits below each person so it never covers their name */
+  .team li.irow { flex-wrap: wrap; }
+  .team li.irow > .itools { position: static; flex: 1 1 100%; justify-content: flex-start; margin-top: .25rem; box-shadow: none; }
+  .team li.irow > div:not(.itools) { flex: 1 1 8rem; min-width: 0; }
 </style>
 </head>
 <body>
@@ -422,7 +464,9 @@ const DEFAULT = {
       { text: "Privacy Policy", href: "https://www.batonleads.com/privacy-policy" }
     ],
     fine: "\u00a9 Baton. All rights reserved."
-  }
+  },
+  brand: { logo: null, logoHeight: 34 },
+  styles: {}
 };
 
 /* ====================================================================
@@ -454,6 +498,54 @@ function deepTrim(v) {
   return v;
 }
 
+// Only images uploaded through this site (served from /api/img/) are ever used.
+const imgOk = (u) => (/^\/api\/img\/[a-f0-9]{20}$/.test(u || "") ? u : null);
+
+// Per-text style (color, opacity, bold) is stored by the text's path, e.g. styles["sections.2.data.big"].
+function styleCss(path) {
+  const st = (state.styles || {})[path];
+  if (!st) return "";
+  let c = "";
+  if (/^#[0-9a-f]{6}$/i.test(st.color || "")) c += `color:${st.color};`;
+  const o = Number(st.opacity);
+  if (o >= 0.2 && o < 1) c += `opacity:${o};`;
+  if (st.bold) c += "font-weight:700;";
+  return c;
+}
+
+// Fill in anything missing so older saved content keeps working after updates.
+function normalize(c) {
+  c.styles = c.styles && typeof c.styles === "object" && !Array.isArray(c.styles) ? c.styles : {};
+  c.brand = Object.assign({ logo: null, logoHeight: 34 }, c.brand || {});
+  c.hero.bgImage = c.hero.bgImage || null;
+  c.hero.bgOverlay = Number.isFinite(+c.hero.bgOverlay) && c.hero.bgOverlay !== null && c.hero.bgOverlay !== undefined ? +c.hero.bgOverlay : 0.8;
+  c.sections.forEach((s) => {
+    if (s.type === "managers") s.data.team.forEach((m) => { m.photo = m.photo || null; m.photoY = Number.isFinite(+m.photoY) ? +m.photoY : 25; });
+    if (s.type === "image") { s.data.width = s.data.width || "wide"; s.data.style = s.data.style || "plain"; }
+  });
+  return c;
+}
+
+// When list items move or are deleted, their text styles move with them.
+function shiftStyles(listPath, fn) {
+  const out = {}, pre = listPath + ".";
+  for (const k in state.styles) {
+    if (k.startsWith(pre)) {
+      const m = k.slice(pre.length).match(/^(\d+)(.*)$/);
+      if (m) { const ni = fn(+m[1]); if (ni !== null) out[pre + ni + m[2]] = state.styles[k]; continue; }
+    }
+    out[k] = state.styles[k];
+  }
+  state.styles = out;
+}
+function dupStyles(listPath, i) {
+  shiftStyles(listPath, (x) => (x > i ? x + 1 : x));
+  const from = listPath + "." + i;
+  for (const k of Object.keys(state.styles)) {
+    if (k === from || k.startsWith(from + ".")) state.styles[listPath + "." + (i + 1) + k.slice(from.length)] = state.styles[k];
+  }
+}
+
 let state, updatedAt = null, baseline = "", pw = "";
 const get = (p) => p.split(".").reduce((a, k) => (a == null ? a : a[k]), state);
 const put = (p, v) => { const ks = p.split("."); const last = ks.pop(); ks.reduce((a, k) => a[k], state)[last] = v; };
@@ -482,9 +574,12 @@ const SWOOSH = '<svg viewBox="0 0 480 640" preserveAspectRatio="xMaxYMid meet"><
 // Editable text (editor) or plain text (public view)
 const T = (path, tag = "span", cls = "", o = {}) => {
   const v = get(path) ?? "";
-  if (edit) return `<${tag} class="ed ${cls}" data-path="${path}" contenteditable="${CE}" spellcheck="true" data-ph="Click to type">${esc(v)}</${tag}>`;
-  return `<${tag}${cls ? ` class="${cls}"` : ""}>${o.link ? linkify(v) : esc(v)}</${tag}>`;
+  const sc = styleCss(path), sa = sc ? ` style="${sc}"` : "";
+  if (edit) return `<${tag} class="ed ${cls}" data-path="${path}" contenteditable="${CE}" spellcheck="true" data-ph="Click to type"${sa}>${esc(v)}</${tag}>`;
+  return `<${tag}${cls ? ` class="${cls}"` : ""}${sa}>${o.link ? linkify(v) : esc(v)}</${tag}>`;
 };
+// Shown in the editor always; on the live site only when it has text.
+const maybe = (path, tag, cls = "", o = {}) => (edit || (get(path) || "").trim() ? T(path, tag, cls, o) : "");
 // Link: editable text + a small "edit link" badge in the editor
 const A = (textPath, urlPath, cls = "") => {
   const url = safeUrl(get(urlPath));
@@ -510,7 +605,7 @@ const paras = (list, cls = "") => {
 /* ====================================================================
    Section renderers
    ==================================================================== */
-const TYPE_NAMES = { methods: "Methods list", prevet: "Checklist", band: "Highlight band", managers: "Team", signoff: "Sign-off", text: "Text section" };
+const TYPE_NAMES = { methods: "Methods list", prevet: "Checklist", band: "Highlight band", managers: "Team", signoff: "Sign-off", text: "Text section", image: "Image" };
 
 const R = {
   methods(s, i) {
@@ -559,12 +654,34 @@ const R = {
   managers(s, i) {
     const b = `sections.${i}.data`, d = s.data;
     const showBtn = edit || (d.buttonText || "").trim();
-    const team = d.team.map((m, j) => `<li class="irow"><span class="avatar" aria-hidden="true">${esc((m.name || "?").trim().charAt(0).toUpperCase() || "?")}</span><div>${T(`${b}.team.${j}.name`, "div", "who")}${T(`${b}.team.${j}.role`, "div", "role")}</div>${tools(b + ".team", j, d.team.length)}</li>`).join("");
+    const team = d.team.map((m, j) => {
+      const p = `${b}.team.${j}`, ph = imgOk(m.photo);
+      const face = ph ? `<img src="${ph}" alt="${esc(m.name)}" loading="lazy" style="object-position:50% ${m.photoY}%">` : esc((m.name || "?").trim().charAt(0).toUpperCase() || "?");
+      const pick = edit ? `<button type="button" class="avatar-btn" data-act="img" data-path="${p}.photo" data-max="800" aria-label="Upload photo for ${esc(m.name)}">Photo</button>` : "";
+      const extra = edit
+        ? `<button type="button" data-act="img" data-path="${p}.photo" data-max="800">${ph ? "Change photo" : "Add photo"}</button>` +
+          (ph ? `<button type="button" data-act="img-clear" data-path="${p}.photo">Remove photo</button><label class="rng">Position <input type="range" min="0" max="100" value="${m.photoY}" data-act="range" data-path="${p}.photoY" aria-label="Move photo up or down"></label>` : "")
+        : "";
+      return `<li class="irow"><span class="avatar${ph ? " has-photo" : ""}" ${ph || edit ? "" : 'aria-hidden="true"'}>${face}${pick}</span><div>${T(`${p}.name`, "div", "who")}${T(`${p}.role`, "div", "role")}</div>${tools(b + ".team", j, d.team.length, extra)}</li>`;
+    }).join("");
     return `<section class="section managers" id="${esc(s.id)}"><div class="wrap split">
       <div>${T(b + ".title", "h2")}
         <div class="managers-copy">${paras(b + ".paragraphs")}${showBtn ? A(b + ".buttonText", b + ".buttonUrl", "btn btn-magenta") : ""}</div>
       </div>
       <div><ul class="team" aria-label="Team">${team}</ul>${addBtn(b + ".team", "member", "Add a team member")}</div>
+    </div></section>`;
+  },
+
+  image(s, i) {
+    const b = `sections.${i}.data`, d = s.data, u = imgOk(d.src);
+    if (!edit && !u && !(d.title || "").trim() && !(d.caption || "").trim()) return "";
+    const pic = u ? `<img src="${u}" alt="${esc(d.alt || d.caption || "")}" loading="lazy">` : (edit ? '<div class="img-empty">No image yet. Use the button to upload one.</div>' : "");
+    const tl = edit ? `<div class="itools imgtools"><button type="button" data-act="img" data-path="${b}.src" data-max="1800">${u ? "Replace image" : "Upload image"}</button>${u ? `<button type="button" class="danger" data-act="img-clear" data-path="${b}.src">Remove</button>` : ""}</div>` : "";
+    return `<section class="section${d.style === "tint" ? " alt" : ""}" id="${esc(s.id)}"><div class="wrap">
+      ${maybe(b + ".title", "h2")}
+      <figure class="fig ${esc(d.width || "wide")}"><div class="imgbox">${pic}${tl}</div>
+        ${edit ? `<p class="altline">Image description (read aloud by screen readers): ${T(b + ".alt", "span")}</p>` : ""}
+        ${maybe(b + ".caption", "figcaption")}</figure>
     </div></section>`;
   },
 
@@ -588,20 +705,33 @@ const secBar = (s, i, n) => `<div class="sectools" role="toolbar" aria-label="Se
   <span class="seclabel">${esc(TYPE_NAMES[s.type] || s.type)}</span>
   <button type="button" data-act="sec-up" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move section up">\u25B2 Up</button>
   <button type="button" data-act="sec-down" data-i="${i}" ${i === n - 1 ? "disabled" : ""} aria-label="Move section down">\u25BC Down</button>
-  ${s.type === "text" ? `<select data-act="style" data-i="${i}" aria-label="Section style">${[["plain", "White"], ["tint", "Light blue"], ["navy", "Navy"]].map(([v, l]) => `<option value="${v}" ${(s.data.style || "plain") === v ? "selected" : ""}>${l}</option>`).join("")}</select>` : ""}
+  ${s.type === "text" || s.type === "image" ? `<select data-act="style" data-i="${i}" aria-label="Section background">${[["plain", "White"], ["tint", "Light blue"]].concat(s.type === "text" ? [["navy", "Navy"]] : []).map(([v, l]) => `<option value="${v}" ${(s.data.style || "plain") === v ? "selected" : ""}>${l}</option>`).join("")}</select>` : ""}
+  ${s.type === "image" ? `<select data-act="width" data-i="${i}" aria-label="Image width">${[["narrow", "Narrow"], ["wide", "Wide"], ["full", "Full width"]].map(([v, l]) => `<option value="${v}" ${(s.data.width || "wide") === v ? "selected" : ""}>${l}</option>`).join("")}</select>` : ""}
   <button type="button" data-act="sec-hide" data-i="${i}">${s.visible ? "Hide" : "Show"}</button>
   <button type="button" data-act="sec-dup" data-i="${i}">Duplicate</button>
   <button type="button" class="danger" data-act="sec-del" data-i="${i}">Delete</button>
 </div>`;
+
+function logoHtml(footer) {
+  const u = imgOk(state.brand.logo);
+  const h = Math.round(Math.max(16, Math.min(120, +state.brand.logoHeight || 34)) * (footer ? 0.85 : 1));
+  const inner = u ? `<img class="logo-img${footer ? " is-footer" : ""}" src="${u}" alt="Baton" style="height:${h}px">` : `${LOGO}Baton`;
+  return `<a class="logo" href="${edit ? "#" : "https://www.batonleads.com/"}" aria-label="Baton">${inner}</a>`;
+}
 
 function renderHero() {
   const n = state.hero.buttons.length;
   const btns = state.hero.buttons.map((_, k) => edit
     ? `<div class="jb">${A(`hero.buttons.${k}.text`, `hero.buttons.${k}.href`, "btn btn-light")}${tools("hero.buttons", k, n)}</div>`
     : A(`hero.buttons.${k}.text`, `hero.buttons.${k}.href`, "btn btn-light")).join("");
-  return `<header class="hero"><div class="wrap">
+  const bg = imgOk(state.hero.bgImage), ov = Math.max(0, Math.min(0.95, state.hero.bgOverlay));
+  const bgStyle = bg ? ` style="background-image:linear-gradient(rgba(0,32,54,${ov}),rgba(0,32,54,${ov})),url('${bg}');background-size:cover;background-position:center"` : "";
+  const hasLogo = !!imgOk(state.brand.logo);
+  const logoTools = edit ? `<div class="itools logotools"><button type="button" data-act="img" data-path="brand.logo" data-max="800">${hasLogo ? "Change logo" : "Upload logo"}</button>${hasLogo ? `<button type="button" data-act="logo-reset">Use default</button><label class="rng">Size <input type="range" min="20" max="90" value="${+state.brand.logoHeight || 34}" data-act="range" data-path="brand.logoHeight" aria-label="Logo size"></label>` : ""}</div>` : "";
+  const heroTools = edit ? `<div class="itools herotools"><button type="button" data-act="img" data-path="hero.bgImage" data-max="2000">${bg ? "Change background image" : "Add background image"}</button>${bg ? `<button type="button" data-act="img-clear" data-path="hero.bgImage">Remove</button><label class="rng">Darkness <input type="range" min="30" max="95" value="${Math.round(ov * 100)}" data-act="range" data-scale="100" data-path="hero.bgOverlay" aria-label="Background darkness"></label>` : ""}</div>` : "";
+  return `<header class="hero"${bgStyle}><div class="wrap">
     <div class="topbar">
-      <div class="brand"><a class="logo" href="${edit ? "#" : "https://www.batonleads.com/"}" aria-label="Baton">${LOGO}Baton</a>${T("hero.label", "span", "brand-label")}</div>
+      <div class="brand">${logoHtml(false)}${T("hero.label", "span", "brand-label")}${logoTools}</div>
       ${A("hero.loginText", "hero.loginUrl", "login")}
     </div>
     <div class="hero-grid"><div class="hero-copy">
@@ -610,7 +740,7 @@ function renderHero() {
       <nav class="jump" aria-label="Jump to a section">${btns}${addBtn("hero.buttons", "herobtn", "Add button")}</nav>
     </div></div>
     <div class="hero-art" aria-hidden="true">${SWOOSH}</div>
-  </div></header>`;
+  </div>${heroTools}</header>`;
 }
 
 function renderFooter() {
@@ -619,7 +749,7 @@ function renderFooter() {
     ? `<div class="fl">${A(`footer.links.${k}.text`, `footer.links.${k}.href`)}${tools("footer.links", k, n)}</div>`
     : A(`footer.links.${k}.text`, `footer.links.${k}.href`)).join("");
   return `<footer><div class="wrap foot">
-    <a class="logo" href="${edit ? "#" : "https://www.batonleads.com/"}" aria-label="Baton">${LOGO}Baton</a>
+    ${logoHtml(true)}
     <nav aria-label="Footer">${links}${addBtn("footer.links", "footlink", "Add link")}</nav>
     ${T("footer.fine", "p", "fine")}
   </div></footer>`;
@@ -639,7 +769,7 @@ function render() {
       <button type="button" class="addbtn" data-act="add-sec">+ Add section</button></div>` : "";
   app.innerHTML = renderHero() + `<main id="main">${body}${addSec}</main>` + renderFooter();
   window.scrollTo(0, y);
-  if (edit) updateBar();
+  if (edit) { updateBar(); hideStyleBar(); }
 }
 
 /* ====================================================================
@@ -648,13 +778,14 @@ function render() {
 const TPL = {
   method: () => ({ id: uid("m"), icon: "doc", name: "New method", body: "Describe this method.", tip: null, actionText: "Learn more", actionUrl: "#" }),
   check: () => ({ title: "New tip", text: "Describe it here." }),
-  member: () => ({ name: "Name", role: "Account Manager" }),
+  member: () => ({ name: "Name", role: "Account Manager", photo: null, photoY: 25 }),
   para: () => "New paragraph. Click to edit.",
   herobtn: () => ({ text: "New button", href: "#" }),
   footlink: () => ({ text: "New link", href: "#" })
 };
 const SECTION_TPL = {
-  text: () => ({ id: uid("text"), type: "text", visible: true, data: { style: "plain", title: "New section", paragraphs: ["Write your content here."], buttonText: "", buttonUrl: "#" } })
+  text: () => ({ id: uid("text"), type: "text", visible: true, data: { style: "plain", title: "New section", paragraphs: ["Write your content here."], buttonText: "", buttonUrl: "#" } }),
+  image: () => ({ id: uid("image"), type: "image", visible: true, data: { style: "plain", width: "wide", title: "", src: null, alt: "", caption: "Add a caption" } })
 };
 function newSection(type) {
   if (SECTION_TPL[type]) return SECTION_TPL[type]();
@@ -698,7 +829,7 @@ async function save(force = false) {
 async function loadServer() {
   const res = await fetch("/api/content", { cache: "no-store" });
   const d = res.ok ? await res.json() : { content: null, updatedAt: null };
-  return { content: d.content || clone(DEFAULT), updatedAt: d.updatedAt || null };
+  return { content: normalize(d.content || clone(DEFAULT)), updatedAt: d.updatedAt || null };
 }
 
 function logout() { sessionStorage.removeItem("baton_pw"); location.reload(); }
@@ -719,33 +850,127 @@ function openLinkDialog(path) {
   $("#linkurl").focus();
 }
 
+function swapWithStyles(listPath, i, j) {
+  const arr = get(listPath);
+  if (j < 0 || j >= arr.length) return;
+  swap(arr, i, j);
+  shiftStyles(listPath, (x) => (x === i ? j : x === j ? i : x));
+}
+function removeWithStyles(listPath, i) {
+  get(listPath).splice(i, 1);
+  shiftStyles(listPath, (x) => (x === i ? null : x > i ? x - 1 : x));
+}
+
+let pendingImg = null;
 function handleAction(b) {
-  const act = b.dataset.act, i = +b.dataset.i;
-  const list = b.dataset.list ? get(b.dataset.list) : null;
+  const act = b.dataset.act, i = +b.dataset.i, lp = b.dataset.list;
+  const list = lp ? get(lp) : null;
   switch (act) {
-    case "up": swap(list, i, i - 1); break;
-    case "down": swap(list, i, i + 1); break;
-    case "del": if (!confirm("Delete this item?")) return; list.splice(i, 1); break;
+    case "up": swapWithStyles(lp, i, i - 1); break;
+    case "down": swapWithStyles(lp, i, i + 1); break;
+    case "del": if (!confirm("Delete this item?")) return; removeWithStyles(lp, i); break;
     case "add": list.push(TPL[b.dataset.kind]()); break;
     case "tip": put(b.dataset.path, get(b.dataset.path) ? null : { title: "Pro tip", text: "Add your tip here." }); break;
     case "link": openLinkDialog(b.dataset.path); return;
-    case "sec-up": swap(state.sections, i, i - 1); break;
-    case "sec-down": swap(state.sections, i, i + 1); break;
+    case "img": pendingImg = { path: b.dataset.path, max: +b.dataset.max || 1600 }; { const f = $("#filepick"); f.value = ""; f.click(); } return;
+    case "img-clear": put(b.dataset.path, null); break;
+    case "logo-reset": state.brand.logo = null; break;
+    case "sec-up": swapWithStyles("sections", i, i - 1); break;
+    case "sec-down": swapWithStyles("sections", i, i + 1); break;
     case "sec-hide": state.sections[i].visible = !state.sections[i].visible; break;
-    case "sec-dup": { const c = clone(state.sections[i]); c.id = uid(c.type); if (c.type === "methods") c.data.items.forEach((it) => (it.id = uid("m"))); state.sections.splice(i + 1, 0, c); break; }
-    case "sec-del": if (!confirm("Delete this whole section?\n\nTip: use Hide to keep it for later without showing it on the site.")) return; state.sections.splice(i, 1); break;
+    case "sec-dup": {
+      const c = clone(state.sections[i]); c.id = uid(c.type);
+      if (c.type === "methods") c.data.items.forEach((it) => (it.id = uid("m")));
+      state.sections.splice(i + 1, 0, c); dupStyles("sections", i); break;
+    }
+    case "sec-del": if (!confirm("Delete this whole section?\n\nTip: use Hide to keep it for later without showing it on the site.")) return; removeWithStyles("sections", i); break;
     case "add-sec": state.sections.push(newSection($("#newType").value)); break;
     default: return;
   }
   render();
 }
 
+// ---- Images: shrink in the browser, then upload to the site's own storage ----
+async function prepareImage(file, max) {
+  if (file.type === "image/svg+xml") {
+    if (file.size > 1_000_000) throw new Error("That SVG is over 1 MB.");
+    return file;
+  }
+  if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) throw new Error("Please choose a PNG, JPG, WebP, GIF or SVG image.");
+  if (file.type === "image/gif" && file.size <= 1_500_000) return file; // keep animation
+  const bmp = await createImageBitmap(file);
+  const sc = Math.min(1, max / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(bmp.width * sc)); c.height = Math.max(1, Math.round(bmp.height * sc));
+  c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+  const toBlob = (type, q) => new Promise((r) => c.toBlob(r, type, q));
+  let blob = file.type === "image/png" ? await toBlob("image/png") : await toBlob("image/webp", 0.88);
+  if (blob && blob.size > 3_500_000) blob = await toBlob("image/webp", 0.8);
+  if (!blob || blob.size > 4_000_000) throw new Error("That image is too large. Try a smaller one.");
+  return blob;
+}
+async function uploadImage(file, max) {
+  const blob = await prepareImage(file, max);
+  const res = await fetch("/api/upload", { method: "POST", headers: { "content-type": blob.type, "x-edit-password": pw }, body: blob });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { logout(); throw new Error("Session expired."); }
+  if (!res.ok) throw new Error(data.error || "Upload failed (" + res.status + ")");
+  return data.url;
+}
+
+// ---- Text style bar (color, opacity, bold) ----
+const SWATCHES = [["", "Automatic"], ["#ffffff", "White"], ["#00406c", "Navy"], ["#01ace4", "Sky blue"], ["#002036", "Midnight"], ["#d3eaf6", "Light blue"], ["#36607e", "Muted blue"], ["#bf1363", "Magenta"], ["#00a878", "Green"]];
+const OPACITIES = [1, 0.85, 0.7, 0.55, 0.4];
+let activePath = null;
+function hideStyleBar() { activePath = null; const sb = $("#stylebar"); if (sb) sb.hidden = true; }
+function syncStyleBar() {
+  const st = (state.styles || {})[activePath] || {};
+  const op = OPACITIES.reduce((a, b) => (Math.abs(b - (st.opacity ?? 1)) < Math.abs(a - (st.opacity ?? 1)) ? b : a), 1);
+  $("#sbopacity").value = String(op);
+  $("#sbbold").setAttribute("aria-pressed", st.bold ? "true" : "false");
+  document.querySelectorAll("#swatches .sw").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.color || "") === (st.color || ""))));
+  if (st.color) $("#sbcolor").value = st.color;
+}
+function showStyleBar(path) { activePath = path; $("#stylebar").hidden = false; syncStyleBar(); }
+function applyStyle(patch) {
+  if (!activePath) return;
+  const cur = Object.assign({}, state.styles[activePath] || {}, patch);
+  if (!cur.color) delete cur.color;
+  if (cur.opacity == null || cur.opacity >= 1) delete cur.opacity;
+  if (!cur.bold) delete cur.bold;
+  if (Object.keys(cur).length) state.styles[activePath] = cur; else delete state.styles[activePath];
+  const el = document.querySelector(`[data-path="${activePath}"]`);
+  if (el) el.style.cssText = styleCss(activePath);
+  syncStyleBar(); updateBar();
+}
+
+// Live preview while dragging a slider (no full re-render, so the drag isn't interrupted).
+function liveRange(el) {
+  let v = +el.value; if (el.dataset.scale) v /= +el.dataset.scale;
+  put(el.dataset.path, v);
+  const path = el.dataset.path;
+  if (path === "brand.logoHeight") document.querySelectorAll(".logo-img").forEach((im) => { im.style.height = Math.round(v * (im.classList.contains("is-footer") ? 0.85 : 1)) + "px"; });
+  else if (path === "hero.bgOverlay") { const h = $(".hero"); if (h) h.style.backgroundImage = `linear-gradient(rgba(0,32,54,${v}),rgba(0,32,54,${v})),url('${imgOk(state.hero.bgImage)}')`; }
+  else if (/\.photoY$/.test(path)) { const im = el.closest(".irow")?.querySelector(".avatar img"); if (im) im.style.objectPosition = `50% ${v}%`; }
+  updateBar();
+}
+
 function initEditor() {
   document.body.classList.add("is-edit");
+  document.documentElement.style.scrollPaddingBottom = "13rem"; // keep focused text clear of the editor bar
   const m = document.createElement("meta"); m.name = "robots"; m.content = "noindex, nofollow"; document.head.appendChild(m);
 
   document.body.insertAdjacentHTML("beforeend", `
+    <input type="file" id="filepick" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" hidden>
     <div class="editbar" id="editbar" role="region" aria-label="Editor controls">
+      <div class="stylebar" id="stylebar" hidden role="toolbar" aria-label="Text style">
+        <span class="sb-label">Text style</span>
+        <span class="sb-swatches" id="swatches">${SWATCHES.map(([c, n]) => `<button type="button" class="sw${c ? "" : " auto"}" data-color="${c}" title="${n}" aria-label="${n}" aria-pressed="false" ${c ? `style="background:${c}"` : ""}></button>`).join("")}</span>
+        <label>Custom <input type="color" id="sbcolor" value="#00406c"></label>
+        <label>Opacity <select id="sbopacity">${OPACITIES.map((o) => `<option value="${o}">${Math.round(o * 100)}%</option>`).join("")}</select></label>
+        <button type="button" class="eb-btn" id="sbbold" aria-pressed="false"><b>B</b> Bold</button>
+        <button type="button" class="eb-btn" id="sbreset">Reset style</button>
+      </div>
       <strong class="eb-title">Editing</strong>
       <span id="status" class="eb-status" role="status" aria-live="polite">All changes saved</span>
       <span class="eb-spacer"></span>
@@ -764,16 +989,36 @@ function initEditor() {
     </form></dialog>`);
 
   $("#savebtn").onclick = () => save();
+
+  // Image picker
+  $("#filepick").onchange = async (e) => {
+    const f = e.target.files[0]; if (!f || !pendingImg) return;
+    const job = pendingImg; pendingImg = null;
+    setStatus("Uploading image\u2026", true);
+    try { const url = await uploadImage(f, job.max); put(job.path, url); setStatus("", false); render(); }
+    catch (err) { setStatus("Image not added: " + err.message); }
+  };
+
+  // Text style bar
+  const sbar = $("#stylebar");
+  sbar.addEventListener("mousedown", (e) => { if (!e.target.closest("select,input")) e.preventDefault(); }); // keep the text selected
+  $("#swatches").addEventListener("click", (e) => { const b = e.target.closest(".sw"); if (b) applyStyle({ color: b.dataset.color || undefined }); });
+  $("#sbcolor").addEventListener("input", (e) => applyStyle({ color: e.target.value }));
+  $("#sbopacity").addEventListener("change", (e) => applyStyle({ opacity: +e.target.value }));
+  $("#sbbold").addEventListener("click", () => applyStyle({ bold: !(state.styles[activePath] || {}).bold }));
+  $("#sbreset").addEventListener("click", () => { if (activePath) { delete state.styles[activePath]; const el = document.querySelector(`[data-path="${activePath}"]`); if (el) el.removeAttribute("style"); syncStyleBar(); updateBar(); } });
+  app.addEventListener("focusin", (e) => { const el = e.target.closest("[data-path]"); if (el && el.isContentEditable) showStyleBar(el.dataset.path); });
+  document.addEventListener("mousedown", (e) => { if (!e.target.closest("#stylebar") && !e.target.closest("[data-path]")) hideStyleBar(); });
   $("#logoutbtn").onclick = () => { if (!isDirty() || confirm("You have unsaved changes. Log out anyway?")) logout(); };
   $("#discardbtn").onclick = async () => {
     if (isDirty() && !confirm("Discard all unsaved changes?")) return;
     const s = await loadServer(); state = s.content; updatedAt = s.updatedAt; baseline = JSON.stringify(state); render();
   };
-  $("#resetbtn").onclick = () => { if (confirm("Replace everything in the editor with the original content?\n\nNothing goes live until you press Save changes.")) { state = clone(DEFAULT); render(); } };
+  $("#resetbtn").onclick = () => { if (confirm("Replace everything in the editor with the original content?\n\nNothing goes live until you press Save changes.")) { state = normalize(clone(DEFAULT)); render(); } };
   $("#restorebtn").onclick = async () => {
     const { res, data } = await api("/api/content?version=previous");
     if (!res.ok || !data?.content) { alert("There is no previous version yet. One is kept after each save."); return; }
-    if (confirm("Load the version from before the last save into the editor?\n\nNothing goes live until you press Save changes.")) { state = data.content; render(); }
+    if (confirm("Load the version from before the last save into the editor?\n\nNothing goes live until you press Save changes.")) { state = normalize(data.content); render(); }
   };
   $("#linkcancel").onclick = () => $("#linkdlg").close();
   $("#linkjump").onchange = (e) => { if (e.target.value) $("#linkurl").value = e.target.value; };
@@ -781,6 +1026,7 @@ function initEditor() {
 
   // Typing in any editable text updates the content object directly.
   app.addEventListener("input", (e) => {
+    if (e.target.matches('input[data-act="range"]')) { liveRange(e.target); return; }
     const el = e.target.closest("[data-path]");
     if (!el || !el.isContentEditable) return;
     put(el.dataset.path, el.innerText.replace(/\s*\n+\s*/g, " "));
@@ -803,6 +1049,7 @@ function initEditor() {
     if (!el) return;
     if (el.dataset.act === "icon") { put(el.dataset.path, el.value); render(); }
     if (el.dataset.act === "style") { state.sections[+el.dataset.i].data.style = el.value; render(); }
+    if (el.dataset.act === "width") { state.sections[+el.dataset.i].data.width = el.value; render(); }
   });
   window.addEventListener("beforeunload", (e) => { if (isDirty()) { e.preventDefault(); e.returnValue = ""; } });
 }
@@ -819,8 +1066,8 @@ async function startViewer() {
     const res = await fetch("/api/content", { cache: "no-store", signal: ctl.signal }); clearTimeout(t);
     if (res.ok) data = await res.json();
   } catch { /* fall back to the original content */ }
-  state = data.content || clone(DEFAULT);
-  try { render(); } catch (err) { console.error(err); state = clone(DEFAULT); render(); }
+  try { state = normalize(data.content || clone(DEFAULT)); render(); }
+  catch (err) { console.error(err); state = normalize(clone(DEFAULT)); render(); }
   done();
 }
 
