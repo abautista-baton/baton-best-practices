@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Referral Submissions Made Simple | Baton Best Practices</title>
 <meta name="description" content="Baton referral submission best practices: how to submit referrals, pre-vet customers, review referrals, and reach your account manager.">
+<meta name="theme-color" content="#002036">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Baton">
+<meta property="og:title" content="Referral Submissions Made Simple | Baton Best Practices">
+<meta property="og:description" content="How to submit referrals to Baton, pre-vet customers, review referrals, and reach your account manager.">
+<meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%A0%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -342,6 +348,13 @@
   .team li.irow { flex-wrap: wrap; }
   .team li.irow > .itools { position: static; flex: 1 1 100%; justify-content: flex-start; margin-top: .25rem; box-shadow: none; }
   .team li.irow > div:not(.itools) { flex: 1 1 8rem; min-width: 0; }
+
+  /* ---------- Links inside text ---------- */
+  .ed a { color: var(--link); text-decoration: underline; text-underline-offset: 3px; cursor: text; }
+  .band a:not(.btn), .hero .lead a { color: #8fd8f2; }
+  .signoff a, .fig figcaption a { color: var(--link); }
+  .eb-btn.danger { color: #ff8a80; }
+  dialog #linkremove { color: #b3261e; border-color: #b3261e; }
 </style>
 </head>
 <body>
@@ -498,6 +511,37 @@ function deepTrim(v) {
   return v;
 }
 
+// Links inside text are stored as [words](address). Turn that into real links for display.
+function rich(s, opt = {}) {
+  s = String(s ?? "");
+  const re = /\[([^\[\]]+)\]\(([^)\s]+)\)/g;
+  const seg = (t) => (opt.auto ? linkify(t) : esc(t));
+  let out = "", last = 0, m;
+  while ((m = re.exec(s))) {
+    out += seg(s.slice(last, m.index));
+    const u = safeUrl(m[2]), ext = !opt.edit && /^https?:/i.test(u);
+    out += `<a href="${esc(u)}"${ext ? ' target="_blank" rel="noopener"' : ""}>${esc(m[1])}</a>`;
+    last = m.index + m[0].length;
+  }
+  return out + seg(s.slice(last));
+}
+const plain = (s) => String(s ?? "").replace(/\[([^\[\]]+)\]\(([^)\s]+)\)/g, "$1");
+// Read an editable element back into [words](address) form.
+function ser(node, inA = false) {
+  let out = "";
+  node.childNodes.forEach((n) => {
+    if (n.nodeType === 3) out += n.nodeValue;
+    else if (n.nodeName === "A" && !inA) {
+      const inner = ser(n, true).replace(/[\[\]]/g, "");
+      const href = (n.getAttribute("href") || "").replace(/\)/g, "%29").replace(/\s/g, "%20");
+      out += inner ? `[${inner}](${href})` : "";
+    } else if (n.nodeName === "BR") out += " ";
+    else out += ser(n, inA);
+  });
+  return out;
+}
+const fieldText = (el) => ser(el).replace(/\u00a0/g, " ").replace(/\s*\n+\s*/g, " ");
+
 // Only images uploaded through this site (served from /api/img/) are ever used.
 const imgOk = (u) => (/^\/api\/img\/[a-f0-9]{20}$/.test(u || "") ? u : null);
 
@@ -575,8 +619,11 @@ const SWOOSH = '<svg viewBox="0 0 480 640" preserveAspectRatio="xMaxYMid meet"><
 const T = (path, tag = "span", cls = "", o = {}) => {
   const v = get(path) ?? "";
   const sc = styleCss(path), sa = sc ? ` style="${sc}"` : "";
-  if (edit) return `<${tag} class="ed ${cls}" data-path="${path}" contenteditable="${CE}" spellcheck="true" data-ph="Click to type"${sa}>${esc(v)}</${tag}>`;
-  return `<${tag}${cls ? ` class="${cls}"` : ""}${sa}>${o.link ? linkify(v) : esc(v)}</${tag}>`;
+  if (edit) {
+    const inline = !o.plain; // text inside buttons/links can't contain another link
+    return `<${tag} class="ed ${cls}" data-path="${path}" contenteditable="${inline ? "true" : CE}" spellcheck="true" data-ph="Click to type"${sa}>${inline ? rich(v, { edit: true }) : esc(v)}</${tag}>`;
+  }
+  return `<${tag}${cls ? ` class="${cls}"` : ""}${sa}>${o.plain ? esc(v) : rich(v, { auto: !!o.link })}</${tag}>`;
 };
 // Shown in the editor always; on the live site only when it has text.
 const maybe = (path, tag, cls = "", o = {}) => (edit || (get(path) || "").trim() ? T(path, tag, cls, o) : "");
@@ -584,7 +631,7 @@ const maybe = (path, tag, cls = "", o = {}) => (edit || (get(path) || "").trim()
 const A = (textPath, urlPath, cls = "") => {
   const url = safeUrl(get(urlPath));
   if (edit) {
-    return `<span class="lw"><a class="${cls}" href="${esc(url)}">${T(textPath, "span")}</a><button type="button" class="linkbadge" data-act="link" data-path="${urlPath}" title="Edit link: ${esc(url)}" aria-label="Edit link">${ICONS.link}</button></span>`;
+    return `<span class="lw"><a class="${cls}" href="${esc(url)}">${T(textPath, "span", "", { plain: true })}</a><button type="button" class="linkbadge" data-act="link" data-path="${urlPath}" title="Edit link: ${esc(url)}" aria-label="Edit link">${ICONS.link}</button></span>`;
   }
   const ext = /^https?:/i.test(url);
   return `<a class="${cls}" href="${esc(url)}"${ext ? ' target="_blank" rel="noopener"' : ""}>${esc(get(textPath))}</a>`;
@@ -656,7 +703,7 @@ const R = {
     const showBtn = edit || (d.buttonText || "").trim();
     const team = d.team.map((m, j) => {
       const p = `${b}.team.${j}`, ph = imgOk(m.photo);
-      const face = ph ? `<img src="${ph}" alt="${esc(m.name)}" loading="lazy" style="object-position:50% ${m.photoY}%">` : esc((m.name || "?").trim().charAt(0).toUpperCase() || "?");
+      const face = ph ? `<img src="${ph}" alt="${esc(plain(m.name))}" loading="lazy" style="object-position:50% ${m.photoY}%">` : esc((m.name || "?").trim().charAt(0).toUpperCase() || "?");
       const pick = edit ? `<button type="button" class="avatar-btn" data-act="img" data-path="${p}.photo" data-max="800" aria-label="Upload photo for ${esc(m.name)}">Photo</button>` : "";
       const extra = edit
         ? `<button type="button" data-act="img" data-path="${p}.photo" data-max="800">${ph ? "Change photo" : "Add photo"}</button>` +
@@ -675,7 +722,7 @@ const R = {
   image(s, i) {
     const b = `sections.${i}.data`, d = s.data, u = imgOk(d.src);
     if (!edit && !u && !(d.title || "").trim() && !(d.caption || "").trim()) return "";
-    const pic = u ? `<img src="${u}" alt="${esc(d.alt || d.caption || "")}" loading="lazy">` : (edit ? '<div class="img-empty">No image yet. Use the button to upload one.</div>' : "");
+    const pic = u ? `<img src="${u}" alt="${esc(plain(d.alt || d.caption || ""))}" loading="lazy">` : (edit ? '<div class="img-empty">No image yet. Use the button to upload one.</div>' : "");
     const tl = edit ? `<div class="itools imgtools"><button type="button" data-act="img" data-path="${b}.src" data-max="1800">${u ? "Replace image" : "Upload image"}</button>${u ? `<button type="button" class="danger" data-act="img-clear" data-path="${b}.src">Remove</button>` : ""}</div>` : "";
     return `<section class="section${d.style === "tint" ? " alt" : ""}" id="${esc(s.id)}"><div class="wrap">
       ${maybe(b + ".title", "h2")}
@@ -834,20 +881,34 @@ async function loadServer() {
 
 function logout() { sessionStorage.removeItem("baton_pw"); location.reload(); }
 
-let linkPath = null;
-function openLinkDialog(path) {
-  linkPath = path;
+let linkPath = null, inlineMode = null, savedSel = null;
+function openLinkDialog(path, inl) {
+  linkPath = path || null; inlineMode = inl || null;
   const dlg = $("#linkdlg");
-  $("#linkurl").value = get(path) || "";
+  $("#linktitle").textContent = inl ? (inl.anchor ? "Edit link" : "Link the selected words") : "Edit link";
+  $("#linkurl").value = inl ? (inl.anchor ? inl.anchor.getAttribute("href") || "" : "") : get(path) || "";
+  $("#linkremove").hidden = !(inl && inl.anchor);
   const targets = [];
   state.sections.forEach((s) => {
     const t = s.data && (s.data.title || s.data.text);
-    targets.push([s.id, (t || s.id).slice(0, 48)]);
-    if (s.type === "methods") s.data.items.forEach((it) => targets.push([it.id, "\u00A0\u00A0" + it.name]));
+    targets.push([s.id, plain(t || s.id).slice(0, 48)]);
+    if (s.type === "methods") s.data.items.forEach((it) => targets.push([it.id, "\u00A0\u00A0" + plain(it.name)]));
   });
   $("#linkjump").innerHTML = '<option value="">Jump to a section on this page\u2026</option>' + targets.map(([id, l]) => `<option value="#${esc(id)}">${esc(l)}</option>`).join("");
   dlg.showModal();
   $("#linkurl").focus();
+}
+const anchorOf = (node, root) => { for (let n = node; n && n !== root; n = n.parentNode) if (n.nodeName === "A") return n; return null; };
+// url: an address to link to, or null to remove the link
+function applyInline(job, url) {
+  if (!job || !document.contains(job.el)) return;
+  snapshot();
+  const { el, range } = job;
+  el.focus();
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+  if (url === null) document.execCommand("unlink"); else document.execCommand("createLink", false, url);
+  put(el.dataset.path, fieldText(el));
+  savedSel = null; render();
 }
 
 function swapWithStyles(listPath, i, j) {
@@ -861,9 +922,29 @@ function removeWithStyles(listPath, i) {
   shiftStyles(listPath, (x) => (x === i ? null : x > i ? x - 1 : x));
 }
 
+const history = [], future = [];
+function updateUndo() { const u = $("#undobtn"), r = $("#redobtn"); if (u) u.disabled = !history.length; if (r) r.disabled = !future.length; }
+function snapshot() {
+  const j = JSON.stringify(state);
+  if (j !== history[history.length - 1]) { history.push(j); if (history.length > 80) history.shift(); }
+  future.length = 0; updateUndo();
+}
+function undo() {
+  const now = JSON.stringify(state); let prev = null;
+  while (history.length) { const h = history.pop(); if (h !== now) { prev = h; break; } }
+  if (prev) { future.push(now); state = JSON.parse(prev); render(); }
+  updateUndo();
+}
+function redo() {
+  const now = JSON.stringify(state);
+  if (future.length) { history.push(now); state = JSON.parse(future.pop()); render(); }
+  updateUndo();
+}
+
 let pendingImg = null;
 function handleAction(b) {
   const act = b.dataset.act, i = +b.dataset.i, lp = b.dataset.list;
+  if (act !== "link" && act !== "img") snapshot();
   const list = lp ? get(lp) : null;
   switch (act) {
     case "up": swapWithStyles(lp, i, i - 1); break;
@@ -922,7 +1003,7 @@ async function uploadImage(file, max) {
 const SWATCHES = [["", "Automatic"], ["#ffffff", "White"], ["#00406c", "Navy"], ["#01ace4", "Sky blue"], ["#002036", "Midnight"], ["#d3eaf6", "Light blue"], ["#36607e", "Muted blue"], ["#bf1363", "Magenta"], ["#00a878", "Green"]];
 const OPACITIES = [1, 0.85, 0.7, 0.55, 0.4];
 let activePath = null;
-function hideStyleBar() { activePath = null; const sb = $("#stylebar"); if (sb) sb.hidden = true; }
+function hideStyleBar() { activePath = null; if (typeof savedSel !== "undefined") savedSel = null; const sb = $("#stylebar"); if (sb) sb.hidden = true; }
 function syncStyleBar() {
   const st = (state.styles || {})[activePath] || {};
   const op = OPACITIES.reduce((a, b) => (Math.abs(b - (st.opacity ?? 1)) < Math.abs(a - (st.opacity ?? 1)) ? b : a), 1);
@@ -932,8 +1013,10 @@ function syncStyleBar() {
   if (st.color) $("#sbcolor").value = st.color;
 }
 function showStyleBar(path) { activePath = path; $("#stylebar").hidden = false; syncStyleBar(); }
+let lastStyleSnap = 0;
 function applyStyle(patch) {
   if (!activePath) return;
+  if (Date.now() - lastStyleSnap > 1500) { snapshot(); lastStyleSnap = Date.now(); }
   const cur = Object.assign({}, state.styles[activePath] || {}, patch);
   if (!cur.color) delete cur.color;
   if (cur.opacity == null || cur.opacity >= 1) delete cur.opacity;
@@ -969,12 +1052,15 @@ function initEditor() {
         <label>Custom <input type="color" id="sbcolor" value="#00406c"></label>
         <label>Opacity <select id="sbopacity">${OPACITIES.map((o) => `<option value="${o}">${Math.round(o * 100)}%</option>`).join("")}</select></label>
         <button type="button" class="eb-btn" id="sbbold" aria-pressed="false"><b>B</b> Bold</button>
+        <button type="button" class="eb-btn" id="sblink" disabled title="Select some words in the text first, then click to link them">Link</button>
         <button type="button" class="eb-btn" id="sbreset">Reset style</button>
       </div>
       <strong class="eb-title">Editing</strong>
       <span id="status" class="eb-status" role="status" aria-live="polite">All changes saved</span>
       <span class="eb-spacer"></span>
       <button type="button" class="eb-btn primary" id="savebtn" disabled>Save changes</button>
+      <button type="button" class="eb-btn" id="undobtn" disabled title="Undo (Ctrl/Cmd+Z when not typing in a text box)">Undo</button>
+      <button type="button" class="eb-btn" id="redobtn" disabled>Redo</button>
       <button type="button" class="eb-btn" id="discardbtn">Discard</button>
       <button type="button" class="eb-btn" id="restorebtn">Restore previous</button>
       <button type="button" class="eb-btn" id="resetbtn">Reset to original</button>
@@ -982,10 +1068,10 @@ function initEditor() {
       <button type="button" class="eb-btn" id="logoutbtn">Log out</button>
     </div>
     <dialog id="linkdlg"><form method="dialog" id="linkform">
-      <h2>Edit link</h2>
+      <h2 id="linktitle">Edit link</h2>
       <label>Web address, email or phone<input id="linkurl" type="text" autocomplete="off" placeholder="https://\u2026 or name@company.com"></label>
       <label>Or jump to part of this page<select id="linkjump"></select></label>
-      <div class="dlg-actions"><button type="button" class="eb-btn" id="linkcancel">Cancel</button><button type="submit" class="eb-btn primary">Apply link</button></div>
+      <div class="dlg-actions"><button type="button" class="eb-btn" id="linkremove" hidden>Remove link</button><button type="button" class="eb-btn" id="linkcancel">Cancel</button><button type="submit" class="eb-btn primary">Apply link</button></div>
     </form></dialog>`);
 
   $("#savebtn").onclick = () => save();
@@ -995,7 +1081,7 @@ function initEditor() {
     const f = e.target.files[0]; if (!f || !pendingImg) return;
     const job = pendingImg; pendingImg = null;
     setStatus("Uploading image\u2026", true);
-    try { const url = await uploadImage(f, job.max); put(job.path, url); setStatus("", false); render(); }
+    try { const url = await uploadImage(f, job.max); snapshot(); put(job.path, url); setStatus("", false); render(); }
     catch (err) { setStatus("Image not added: " + err.message); }
   };
 
@@ -1007,29 +1093,79 @@ function initEditor() {
   $("#sbopacity").addEventListener("change", (e) => applyStyle({ opacity: +e.target.value }));
   $("#sbbold").addEventListener("click", () => applyStyle({ bold: !(state.styles[activePath] || {}).bold }));
   $("#sbreset").addEventListener("click", () => { if (activePath) { delete state.styles[activePath]; const el = document.querySelector(`[data-path="${activePath}"]`); if (el) el.removeAttribute("style"); syncStyleBar(); updateBar(); } });
-  app.addEventListener("focusin", (e) => { const el = e.target.closest("[data-path]"); if (el && el.isContentEditable) showStyleBar(el.dataset.path); });
+  app.addEventListener("focusin", (e) => {
+    const el = e.target.closest("[data-path]");
+    if (el && el.isContentEditable) { snapshot(); showStyleBar(el.dataset.path); }
+    else if (e.target.matches('input[data-act="range"]')) snapshot();
+  });
+
+  // Link words inside text: select them, then click "Link"
+  const updateLinkBtn = () => {
+    const b = $("#sblink"); if (!b) return;
+    const ok = savedSel && document.contains(savedSel.el);
+    const a = ok ? anchorOf(savedSel.range.startContainer, savedSel.el) : null;
+    b.disabled = !(ok && (!savedSel.range.collapsed || a));
+    b.textContent = a ? "Edit link" : "Link";
+  };
+  document.addEventListener("selectionchange", () => {
+    const sel = getSelection(); if (!sel.rangeCount) return;
+    const r = sel.getRangeAt(0), node = r.commonAncestorContainer;
+    const field = (node.nodeType === 1 ? node : node.parentElement)?.closest("[data-path]");
+    if (field && field.getAttribute("contenteditable") === "true") savedSel = { el: field, range: r.cloneRange() };
+    else if (field) savedSel = null;
+    updateLinkBtn();
+  });
+  $("#sblink").addEventListener("click", () => {
+    if (!savedSel) return;
+    const el = savedSel.el, range = savedSel.range.cloneRange();
+    const anchor = anchorOf(range.startContainer, el);
+    if (anchor && range.collapsed) range.selectNodeContents(anchor);
+    openLinkDialog(null, { el, range, anchor });
+  });
+  // Keep text plain: no bold/italic shortcuts, no dropped-in content
+  app.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && /^[biu]$/i.test(e.key) && e.target.closest("[data-path]")) e.preventDefault(); });
+  app.addEventListener("drop", (e) => { if (e.target.closest("[data-path]")) e.preventDefault(); });
+
+  // Undo / Redo
+  $("#undobtn").onclick = undo; $("#redobtn").onclick = redo;
+  document.addEventListener("keydown", (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.target.closest("[contenteditable],input,select,textarea,dialog")) return;
+    const k = e.key.toLowerCase();
+    if (k === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+    else if (k === "y" || (k === "z" && e.shiftKey)) { e.preventDefault(); redo(); }
+  });
   document.addEventListener("mousedown", (e) => { if (!e.target.closest("#stylebar") && !e.target.closest("[data-path]")) hideStyleBar(); });
   $("#logoutbtn").onclick = () => { if (!isDirty() || confirm("You have unsaved changes. Log out anyway?")) logout(); };
   $("#discardbtn").onclick = async () => {
     if (isDirty() && !confirm("Discard all unsaved changes?")) return;
-    const s = await loadServer(); state = s.content; updatedAt = s.updatedAt; baseline = JSON.stringify(state); render();
+    snapshot(); const s = await loadServer(); state = s.content; updatedAt = s.updatedAt; baseline = JSON.stringify(state); render();
   };
-  $("#resetbtn").onclick = () => { if (confirm("Replace everything in the editor with the original content?\n\nNothing goes live until you press Save changes.")) { state = normalize(clone(DEFAULT)); render(); } };
+  $("#resetbtn").onclick = () => { if (confirm("Replace everything in the editor with the original content?\n\nNothing goes live until you press Save changes.")) { snapshot(); state = normalize(clone(DEFAULT)); render(); } };
   $("#restorebtn").onclick = async () => {
     const { res, data } = await api("/api/content?version=previous");
     if (!res.ok || !data?.content) { alert("There is no previous version yet. One is kept after each save."); return; }
-    if (confirm("Load the version from before the last save into the editor?\n\nNothing goes live until you press Save changes.")) { state = normalize(data.content); render(); }
+    if (confirm("Load the version from before the last save into the editor?\n\nNothing goes live until you press Save changes.")) { snapshot(); state = normalize(data.content); render(); }
   };
-  $("#linkcancel").onclick = () => $("#linkdlg").close();
+  $("#linkcancel").onclick = () => { inlineMode = null; $("#linkdlg").close(); };
   $("#linkjump").onchange = (e) => { if (e.target.value) $("#linkurl").value = e.target.value; };
-  $("#linkform").onsubmit = () => { put(linkPath, normalizeUrl($("#linkurl").value)); render(); };
+  $("#linkform").onsubmit = () => {
+    const raw = $("#linkurl").value.trim();
+    if (inlineMode) {
+      const job = inlineMode; inlineMode = null;
+      if (raw) setTimeout(() => applyInline(job, normalizeUrl(raw)), 0);
+      else if (job.anchor) setTimeout(() => applyInline(job, null), 0); // empty address = remove the link
+      return;
+    }
+    snapshot(); put(linkPath, normalizeUrl(raw)); render();
+  };
+  $("#linkremove").onclick = () => { const job = inlineMode; inlineMode = null; $("#linkdlg").close(); setTimeout(() => applyInline(job, null), 0); };
 
   // Typing in any editable text updates the content object directly.
   app.addEventListener("input", (e) => {
     if (e.target.matches('input[data-act="range"]')) { liveRange(e.target); return; }
     const el = e.target.closest("[data-path]");
     if (!el || !el.isContentEditable) return;
-    put(el.dataset.path, el.innerText.replace(/\s*\n+\s*/g, " "));
+    put(el.dataset.path, fieldText(el));
     updateBar();
   });
   app.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.closest("[data-path]")) e.preventDefault(); });
@@ -1047,6 +1183,7 @@ function initEditor() {
   document.addEventListener("change", (e) => {
     const el = e.target.closest("select[data-act]");
     if (!el) return;
+    if (el.dataset.act) snapshot();
     if (el.dataset.act === "icon") { put(el.dataset.path, el.value); render(); }
     if (el.dataset.act === "style") { state.sections[+el.dataset.i].data.style = el.value; render(); }
     if (el.dataset.act === "width") { state.sections[+el.dataset.i].data.width = el.value; render(); }

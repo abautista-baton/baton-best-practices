@@ -48,6 +48,8 @@ The layout stays responsive because you change content and order, not pixel posi
 - **Hero background image:** "Add background image" at the bottom of the header. Use the Darkness slider to keep the headline readable.
 - **Image sections:** "Add a section → Image" adds a full image block with optional heading and caption. Set the width (Narrow / Wide / Full width) and background in the section toolbar. Fill in the image description for accessibility.
 - **Text style:** click any text and the **Text style** bar appears above the Save bar. Pick a color, set opacity (100% to 40%), toggle bold, or press **Reset style**. Styles stay with their text when you move or duplicate items and sections. Leave color on Automatic when you want the text to adapt to light and dark mode.
+- **Link words inside text:** select any words in any paragraph or heading, then press **Link** in the Text style bar. Put your cursor inside an existing link to change or remove it. (Buttons and standalone links keep the round link icon.)
+- **Undo / Redo:** the Undo and Redo buttons in the editor bar reverse moves, deletes, uploads and style changes made since you opened the editor.
 - Uploaded images are resized in the browser before upload (PNG, JPG, WebP, GIF, SVG; about 4 MB limit) and stored in Netlify Blobs.
 
 ## Changing the password
