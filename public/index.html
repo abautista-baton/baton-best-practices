@@ -355,6 +355,33 @@
   .signoff a, .fig figcaption a { color: var(--link); }
   .eb-btn.danger { color: #ff8a80; }
   dialog #linkremove { color: #b3261e; border-color: #b3261e; }
+
+  /* ---------- Example script card + numbered steps ---------- */
+  :root { --amber: #fff1cf; --amber-ink: #00406c; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --amber: rgba(242,145,54,.17); --amber-ink: #eaf6fc; } }
+  :root[data-theme="dark"] { --amber: rgba(242,145,54,.17); --amber-ink: #eaf6fc; }
+
+  .scriptcard { padding: clamp(1.5rem, 4.5vw, 3.25rem); border-radius: 28px; background: var(--bg-alt); }
+  .scriptcard h2 { color: var(--link); }
+  .script-list { display: grid; gap: 1rem; max-width: 46rem; margin: 1.75rem 0 0; padding: 0; list-style: none; }
+  .script-list li { position: relative; padding-left: 1.75rem; }
+  .script-list li::before { content: ""; position: absolute; left: .15rem; top: .62em; width: .6rem; height: .6rem; border: 1.8px solid var(--text); border-radius: 50%; }
+  .script-list li p { color: var(--text); }
+  .tip.tip-amber { display: block; max-width: 46rem; margin-top: 2rem; padding: 1.25rem 1.5rem; border: 0; border-radius: 18px; background: var(--amber); }
+  .tip-amber p, .tip-amber .ed { color: var(--amber-ink); }
+  .tip-head { margin-bottom: .5rem; }
+  .tip-label { font-style: italic; font-weight: 700; }
+  .tip-lead { font-weight: 700; }
+  .tip-amber .tipmsg { font-size: 1.05rem; }
+  .strong, strong { font-weight: 700; }
+
+  .numlist { margin: 1.5rem 0 0; padding: 0; list-style: none; counter-reset: n; }
+  .numlist li { counter-increment: n; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 1.1rem; padding-block: 1.5rem; border-top: 1px solid var(--rule); }
+  .numlist li:last-child { border-bottom: 1px solid var(--rule); }
+  .numlist li::before { content: counter(n); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 600; }
+  .numlist h3 { font-size: 1.3rem; font-weight: 600; line-height: 1.25; color: var(--text); }
+  .numlist p { margin-top: .35rem; max-width: 34rem; color: var(--text-soft); }
+  .steps-cta { margin-top: 1.75rem; }
 </style>
 </head>
 <body>
@@ -385,6 +412,7 @@ const CE = (() => {
    Original content (used on first load, and by "Reset to original")
    ==================================================================== */
 const DEFAULT = {
+  version: 2,
   hero: {
     label: "Best Practices for 2025",
     loginText: "Log in",
@@ -419,6 +447,37 @@ const DEFAULT = {
         moreLead: "Want to know more?",
         moreText: "See the summary and comparison of referral submission methods.",
         moreUrl: "https://intercom.help/baton-leads-inc/en/articles/8712789-summary-and-comparison-of-baton-referral-submission-methods"
+      }
+    },
+    {
+      id: "script", type: "script", visible: true,
+      data: {
+        title: "Example Script: Transferring a Call to Baton",
+        intro: "Use this when a caller needs a service you don\u2019t offer or is outside your service area. Get the caller\u2019s okay first, then transfer them live to your Baton Referral Number. It connects them to the Baton Service Pros team.",
+        steps: [
+          "\u201COkay perfect, I wanted to let you know that we don\u2019t service ______. However, we do work with a company that can connect you with a provider who can help.\u201D",
+          "\u201CIs it okay if I transfer you now? Just stay on the line and I\u2019ll connect you to our partners at Service Pros.\u201D",
+          "Once the caller agrees, **forward the call** to your Baton Referral Number. The Service Pros team will confirm the details and connect them with a vetted provider.",
+          "Can\u2019t transfer the call? Give the caller the number, or text it to them, so they can reach out directly."
+        ],
+        tipLabel: "Pro tip:",
+        tipLead: "Send callers a text message and they will be 50%+ more likely to call:",
+        tipMessage: "\u201CHi, [Your Company] here. Here\u2019s the info for Service Pros: [Your Baton Referral Number]. Give them a call and they should be able to help you out. Good luck!\u201D"
+      }
+    },
+    {
+      id: "tracking-number", type: "steps", visible: true,
+      data: {
+        style: "plain",
+        title: "Where to Find Your Tracking Number",
+        intro: "Your tracking number is your Baton Referral Number: the number you transfer callers to, or share with them.",
+        steps: [
+          { title: "Know what it is", text: "Your Baton Referral Number connects callers directly to the Baton Service Pros team. It is assigned to your company, so always use that number when you refer a caller." },
+          { title: "Can\u2019t find it? Ask us", text: "Contact your Account Manager, email client.success@batonleads.com, or call 801-669-8059, and we\u2019ll confirm your number or help you set it up." },
+          { title: "Save it where your team can reach it", text: "Add it as a quick-dial or contact in your phone system and in your call-handling notes, so any rep can transfer a caller or send the text message in seconds." }
+        ],
+        buttonText: "Read the full referral guide",
+        buttonUrl: "https://intercom.help/baton-leads-inc/en/articles/11996009-how-to-refer-a-lead-through-baton"
       }
     },
     {
@@ -515,7 +574,8 @@ function deepTrim(v) {
 function rich(s, opt = {}) {
   s = String(s ?? "");
   const re = /\[([^\[\]]+)\]\(([^)\s]+)\)/g;
-  const seg = (t) => (opt.auto ? linkify(t) : esc(t));
+  const bold = (h) => h.replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>");
+  const seg = (t) => bold(opt.auto ? linkify(t) : esc(t));
   let out = "", last = 0, m;
   while ((m = re.exec(s))) {
     out += seg(s.slice(last, m.index));
@@ -525,7 +585,7 @@ function rich(s, opt = {}) {
   }
   return out + seg(s.slice(last));
 }
-const plain = (s) => String(s ?? "").replace(/\[([^\[\]]+)\]\(([^)\s]+)\)/g, "$1");
+const plain = (s) => String(s ?? "").replace(/\[([^\[\]]+)\]\(([^)\s]+)\)/g, "$1").replace(/\*\*/g, "");
 // Read an editable element back into [words](address) form.
 function ser(node, inA = false) {
   let out = "";
@@ -535,6 +595,9 @@ function ser(node, inA = false) {
       const inner = ser(n, true).replace(/[\[\]]/g, "");
       const href = (n.getAttribute("href") || "").replace(/\)/g, "%29").replace(/\s/g, "%20");
       out += inner ? `[${inner}](${href})` : "";
+    } else if ((n.nodeName === "B" || n.nodeName === "STRONG") && !inA) {
+      const inner = ser(n, inA);
+      out += inner.trim() ? `**${inner.trim()}**${/\s$/.test(inner) ? " " : ""}` : inner;
     } else if (n.nodeName === "BR") out += " ";
     else out += ser(n, inA);
   });
@@ -563,25 +626,37 @@ function normalize(c) {
   c.brand = Object.assign({ logo: null, logoHeight: 34 }, c.brand || {});
   c.hero.bgImage = c.hero.bgImage || null;
   c.hero.bgOverlay = Number.isFinite(+c.hero.bgOverlay) && c.hero.bgOverlay !== null && c.hero.bgOverlay !== undefined ? +c.hero.bgOverlay : 0.8;
+  // Version 2 added the "Example script" and "Where to find your tracking number" sections.
+  if ((c.version || 1) < 2) {
+    if (!c.sections.some((x) => x.type === "script" || x.id === "tracking-number")) {
+      const at = c.sections.findIndex((x) => x.type === "methods") + 1;
+      const add = DEFAULT.sections.filter((x) => x.type === "script" || x.type === "steps").map(clone);
+      c.sections.splice(at, 0, ...add);
+      c.styles = remapStyles(c.styles, "sections", (x) => (x >= at ? x + add.length : x));
+    }
+    c.version = 2;
+  }
   c.sections.forEach((s) => {
     if (s.type === "managers") s.data.team.forEach((m) => { m.photo = m.photo || null; m.photoY = Number.isFinite(+m.photoY) ? +m.photoY : 25; });
     if (s.type === "image") { s.data.width = s.data.width || "wide"; s.data.style = s.data.style || "plain"; }
+    if (s.type === "steps") s.data.style = s.data.style || "plain";
   });
   return c;
 }
 
 // When list items move or are deleted, their text styles move with them.
-function shiftStyles(listPath, fn) {
+function remapStyles(styles, listPath, fn) {
   const out = {}, pre = listPath + ".";
-  for (const k in state.styles) {
+  for (const k in styles) {
     if (k.startsWith(pre)) {
       const m = k.slice(pre.length).match(/^(\d+)(.*)$/);
-      if (m) { const ni = fn(+m[1]); if (ni !== null) out[pre + ni + m[2]] = state.styles[k]; continue; }
+      if (m) { const ni = fn(+m[1]); if (ni !== null) out[pre + ni + m[2]] = styles[k]; continue; }
     }
-    out[k] = state.styles[k];
+    out[k] = styles[k];
   }
-  state.styles = out;
+  return out;
 }
+function shiftStyles(listPath, fn) { state.styles = remapStyles(state.styles, listPath, fn); }
 function dupStyles(listPath, i) {
   shiftStyles(listPath, (x) => (x > i ? x + 1 : x));
   const from = listPath + "." + i;
@@ -652,7 +727,7 @@ const paras = (list, cls = "") => {
 /* ====================================================================
    Section renderers
    ==================================================================== */
-const TYPE_NAMES = { methods: "Methods list", prevet: "Checklist", band: "Highlight band", managers: "Team", signoff: "Sign-off", text: "Text section", image: "Image" };
+const TYPE_NAMES = { methods: "Methods list", prevet: "Checklist", band: "Highlight band", managers: "Team", signoff: "Sign-off", text: "Text section", image: "Image", script: "Example script", steps: "Numbered steps" };
 
 const R = {
   methods(s, i) {
@@ -732,6 +807,29 @@ const R = {
     </div></section>`;
   },
 
+  script(s, i) {
+    const b = `sections.${i}.data`, d = s.data;
+    const li = d.steps.map((_, k) => `<li>${edit
+      ? `<div class="prow">${T(`${b}.steps.${k}`, "p", "", { link: true })}${tools(b + ".steps", k, d.steps.length)}</div>`
+      : T(`${b}.steps.${k}`, "p", "", { link: true })}</li>`).join("");
+    return `<section class="section" id="${esc(s.id)}"><div class="wrap"><div class="scriptcard">
+      ${T(b + ".title", "h2")}${maybe(b + ".intro", "p", "intro", { link: true })}
+      <ul class="script-list">${li}</ul>${addBtn(b + ".steps", "scriptstep", "Add a step")}
+      <aside class="tip tip-amber"><p class="tip-head">${T(b + ".tipLabel", "span", "tip-label")} ${T(b + ".tipLead", "span", "tip-lead")}</p>${T(b + ".tipMessage", "p", "tipmsg", { link: true })}</aside>
+    </div></div></section>`;
+  },
+
+  steps(s, i) {
+    const b = `sections.${i}.data`, d = s.data;
+    const showBtn = edit || (d.buttonText || "").trim();
+    const items = d.steps.map((_, k) => `<li class="irow"><div>${T(`${b}.steps.${k}.title`, "h3")}${T(`${b}.steps.${k}.text`, "p", "", { link: true })}</div>${tools(b + ".steps", k, d.steps.length)}</li>`).join("");
+    return `<section class="section${d.style === "tint" ? " alt" : ""}" id="${esc(s.id)}"><div class="wrap split">
+      <div>${T(b + ".title", "h2")}${maybe(b + ".intro", "p", "intro", { link: true })}</div>
+      <div><ol class="numlist">${items}</ol>${addBtn(b + ".steps", "numstep", "Add a step")}
+        ${showBtn ? `<div class="steps-cta">${A(b + ".buttonText", b + ".buttonUrl", "btn btn-line")}</div>` : ""}</div>
+    </div></section>`;
+  },
+
   signoff(s, i) {
     return `<section class="signoff" id="${esc(s.id)}"><div class="wrap">${T(`sections.${i}.data.text`, "p", "", { link: true })}</div></section>`;
   },
@@ -752,7 +850,7 @@ const secBar = (s, i, n) => `<div class="sectools" role="toolbar" aria-label="Se
   <span class="seclabel">${esc(TYPE_NAMES[s.type] || s.type)}</span>
   <button type="button" data-act="sec-up" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move section up">\u25B2 Up</button>
   <button type="button" data-act="sec-down" data-i="${i}" ${i === n - 1 ? "disabled" : ""} aria-label="Move section down">\u25BC Down</button>
-  ${s.type === "text" || s.type === "image" ? `<select data-act="style" data-i="${i}" aria-label="Section background">${[["plain", "White"], ["tint", "Light blue"]].concat(s.type === "text" ? [["navy", "Navy"]] : []).map(([v, l]) => `<option value="${v}" ${(s.data.style || "plain") === v ? "selected" : ""}>${l}</option>`).join("")}</select>` : ""}
+  ${s.type === "text" || s.type === "image" || s.type === "steps" ? `<select data-act="style" data-i="${i}" aria-label="Section background">${[["plain", "White"], ["tint", "Light blue"]].concat(s.type === "text" ? [["navy", "Navy"]] : []).map(([v, l]) => `<option value="${v}" ${(s.data.style || "plain") === v ? "selected" : ""}>${l}</option>`).join("")}</select>` : ""}
   ${s.type === "image" ? `<select data-act="width" data-i="${i}" aria-label="Image width">${[["narrow", "Narrow"], ["wide", "Wide"], ["full", "Full width"]].map(([v, l]) => `<option value="${v}" ${(s.data.width || "wide") === v ? "selected" : ""}>${l}</option>`).join("")}</select>` : ""}
   <button type="button" data-act="sec-hide" data-i="${i}">${s.visible ? "Hide" : "Show"}</button>
   <button type="button" data-act="sec-dup" data-i="${i}">Duplicate</button>
@@ -827,6 +925,8 @@ const TPL = {
   check: () => ({ title: "New tip", text: "Describe it here." }),
   member: () => ({ name: "Name", role: "Account Manager", photo: null, photoY: 25 }),
   para: () => "New paragraph. Click to edit.",
+  scriptstep: () => "New step. Click to edit.",
+  numstep: () => ({ title: "New step", text: "Describe this step." }),
   herobtn: () => ({ text: "New button", href: "#" }),
   footlink: () => ({ text: "New link", href: "#" })
 };
@@ -1051,7 +1151,7 @@ function initEditor() {
         <span class="sb-swatches" id="swatches">${SWATCHES.map(([c, n]) => `<button type="button" class="sw${c ? "" : " auto"}" data-color="${c}" title="${n}" aria-label="${n}" aria-pressed="false" ${c ? `style="background:${c}"` : ""}></button>`).join("")}</span>
         <label>Custom <input type="color" id="sbcolor" value="#00406c"></label>
         <label>Opacity <select id="sbopacity">${OPACITIES.map((o) => `<option value="${o}">${Math.round(o * 100)}%</option>`).join("")}</select></label>
-        <button type="button" class="eb-btn" id="sbbold" aria-pressed="false"><b>B</b> Bold</button>
+        <button type="button" class="eb-btn" id="sbbold" aria-pressed="false" title="Select words to bold just those words, or click with nothing selected to bold the whole text"><b>B</b> Bold</button>
         <button type="button" class="eb-btn" id="sblink" disabled title="Select some words in the text first, then click to link them">Link</button>
         <button type="button" class="eb-btn" id="sbreset">Reset style</button>
       </div>
@@ -1091,7 +1191,19 @@ function initEditor() {
   $("#swatches").addEventListener("click", (e) => { const b = e.target.closest(".sw"); if (b) applyStyle({ color: b.dataset.color || undefined }); });
   $("#sbcolor").addEventListener("input", (e) => applyStyle({ color: e.target.value }));
   $("#sbopacity").addEventListener("change", (e) => applyStyle({ opacity: +e.target.value }));
-  $("#sbbold").addEventListener("click", () => applyStyle({ bold: !(state.styles[activePath] || {}).bold }));
+  $("#sbbold").addEventListener("click", () => {
+    // Words selected -> bold just those words; nothing selected -> bold the whole text.
+    if (savedSel && document.contains(savedSel.el) && !savedSel.range.collapsed && savedSel.el.dataset.path === activePath) {
+      snapshot();
+      const { el, range } = savedSel;
+      el.focus(); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      document.execCommand("bold");
+      put(el.dataset.path, fieldText(el));
+      savedSel = null; render();
+      return;
+    }
+    applyStyle({ bold: !(state.styles[activePath] || {}).bold });
+  });
   $("#sbreset").addEventListener("click", () => { if (activePath) { delete state.styles[activePath]; const el = document.querySelector(`[data-path="${activePath}"]`); if (el) el.removeAttribute("style"); syncStyleBar(); updateBar(); } });
   app.addEventListener("focusin", (e) => {
     const el = e.target.closest("[data-path]");

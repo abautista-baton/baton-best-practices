@@ -49,6 +49,8 @@ The layout stays responsive because you change content and order, not pixel posi
 - **Image sections:** "Add a section → Image" adds a full image block with optional heading and caption. Set the width (Narrow / Wide / Full width) and background in the section toolbar. Fill in the image description for accessibility.
 - **Text style:** click any text and the **Text style** bar appears above the Save bar. Pick a color, set opacity (100% to 40%), toggle bold, or press **Reset style**. Styles stay with their text when you move or duplicate items and sections. Leave color on Automatic when you want the text to adapt to light and dark mode.
 - **Link words inside text:** select any words in any paragraph or heading, then press **Link** in the Text style bar. Put your cursor inside an existing link to change or remove it. (Buttons and standalone links keep the round link icon.)
+- **Bold words:** select words and press **Bold** in the Text style bar to bold just those words. With nothing selected, Bold applies to the whole text.
+- **Example script and Where to Find Your Tracking Number:** two sections added after the three submission methods. Edit the script lines, the Pro tip text message, and the numbered steps in place. Replace `[Your Company]` and `[Your Baton Referral Number]` in the sample text message with real details if you want, or leave them as blanks for partners to fill in. Both can be moved, hidden, duplicated or deleted, and more can be added from "Add a section".
 - **Undo / Redo:** the Undo and Redo buttons in the editor bar reverse moves, deletes, uploads and style changes made since you opened the editor.
 - Uploaded images are resized in the browser before upload (PNG, JPG, WebP, GIF, SVG; about 4 MB limit) and stored in Netlify Blobs.
 
